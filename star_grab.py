@@ -1,18 +1,21 @@
-from skyfield.api import Star, load
-from skyfield.data import stellarium
+from skyfield.api import load
+from skyfield.data import stellarium, hipparcos
+
 from pprint import pprint
 import numpy as np
-# ============================== Grab to JSON ============================== #
-# Get 
+from astroquery.simbad import Simbad
 import json
+import pandas as pd
+import matplotlib.pyplot as plt
 
+
+# ============================== Grab to JSON ============================== #
 def create_json():
     url = ('https://raw.githubusercontent.com/Stellarium/stellarium/master'
         '/skycultures/modern_st/constellationship.fab')
 
     with load.open(url) as f:
         constellations = stellarium.parse_constellations(f)
-    # print(type(constellations))
     constellation_dict: dict = {}
     for star in constellations:
         unique_stars: set = set()
@@ -33,29 +36,19 @@ def create_json():
 
 # ============================== Plot Gemini TEST ============================== #
 
-import matplotlib.pyplot as plt
-
-# Load the star catalog and ephemeris
-from skyfield.data import hipparcos
-
 def get_gemini_stars():
+    # Load the star catalog
     with load.open(hipparcos.URL) as f:
         stars = hipparcos.load_dataframe(f)
 
     with open('Stars/constellations.txt', 'r') as cns:
         constellation_dict = json.load(cns)
 
-    # ts = load.timescale()
-
     # List of Gemini stars (Hipparcos numbers for Pollux, Castor, etc.)
     gemini_hipparcos_ids = constellation_dict['Gem']['stars']
 
     # Get star data
     gemini_stars = stars.loc[gemini_hipparcos_ids]
-
-    print(type(gemini_stars))
-
-    print(gemini_stars.head())
 
     # Print star data (right ascension and declination)
     print(gemini_stars[['ra_degrees', 'dec_degrees']])
@@ -68,11 +61,6 @@ def get_gemini_stars():
     plt.figure(figsize=(8, 6))
     plt.scatter(ra, dec, color='blue')
 
-    # Annotate the stars with their names
-    # star_names = ['Pollux', 'Castor', 'Alhena', 'Wasat', 'Mebsuta']
-    # for i, name in enumerate(star_names):
-    #     plt.text(ra.iloc[i], dec.iloc[i], name, fontsize=12, ha='right')
-
     plt.title('Gemini Constellation')
     plt.xlabel('Right Ascension (degrees)')
     plt.ylabel('Declination (degrees)')
@@ -81,7 +69,6 @@ def get_gemini_stars():
     plt.show()
 
 #Finding the names of the stars
-from astroquery.simbad import Simbad
 def get_star_names(id_number):
     # Configure Simbad to include names
     Simbad.add_votable_fields('ids')
@@ -92,7 +79,6 @@ def get_star_names(id_number):
 
 # ============================== Making my own reference dataframe ============================== #
     
-import pandas as pd
 
 def make_reference_dataframe():
     with load.open(hipparcos.URL) as f:
@@ -112,7 +98,6 @@ def make_reference_dataframe():
 
     star_df = all_stars[['ra_degrees', 'dec_degrees']]
 
-    # star_df.to_csv('star_data.csv')
     return star_df
 
 def count_consts():
@@ -125,7 +110,6 @@ def make_constellation_tikz(star_df):
     with open('Stars/constellations.txt', 'r') as cns:
         constellation_dict = json.load(cns)
 
-    # star_df = pd.read_csv('Stars/star_data.csv')
 
     tikz_text = ''
     for key in constellation_dict.keys():
@@ -138,7 +122,7 @@ def make_constellation_tikz(star_df):
 
         ras = -1 * ras # Invert x-axis for standard sky appearance
 
-        # Convert to radians mostly just to make the units smaller
+        # Convert to radians
         ras = ras * np.pi / 180 
         decs = decs * np.pi / 180
 
@@ -146,6 +130,7 @@ def make_constellation_tikz(star_df):
         ras = ras - np.min(ras)
         decs = decs -  np.min(decs)
 
+        # Scale to make the biggest value in either direction 5
         if np.max(decs) > np.max(ras):
             scale = 5 / np.max(decs)
         else:
@@ -181,10 +166,6 @@ def make_constellation_tikz(star_df):
         cc.write(tikz_text)
 
 if __name__ == '__main__':
-    # create_json()
-    # get_gemini_stars()
-    # get_star_names(116805)
-    # star_df = make_reference_dataframe()
-    # make_constellation_tikz(star_df)
-    count_consts()
+    star_df = make_reference_dataframe()
+    make_constellation_tikz(star_df)
     pass
